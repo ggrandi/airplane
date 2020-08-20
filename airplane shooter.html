@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<!--Made by Giovanni Grandi-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Airplane Shooter</title>
+  <link rel="icon" href="https://drive.google.com/uc?id=1PEsRKV95fsah4xpVDP4Cp9rKy-b3GlDP">
+  <style>
+    canvas {
+      background: #0c091f;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<p id="start"><br/></p>
+<canvas id="Canvas" width="500" height="600">Your browser does not support the HTML5 canvas tag.</canvas>
+<p><br/></p>
+
+<script>
+  "use strict";
+  const canvas = document.getElementById("Canvas");
+  const ctx = canvas.getContext("2d");
+  const FPS = 60;
+  let score = 0;
+  let isShot = 0;
+  let ramp = 1;
+  let powerupNum = 0;
+  let gameState = "start"
+  let frames = 0;
+  let seconds = 0;
+
+  function createImage(src) {
+    let img = new Image();
+    img.src = src;
+    return img;
+  }
+
+  let PLAYERIMG = createImage("airplane/player.png");
+  let ENEMYIMG = createImage("airplane/enemy.png");
+  let BOSSIMG = createImage("airplane/boss.png");
+  let SPEEDIMG = createImage("airplane/speed.png");
+  let BULLETIMG = createImage("airplane/bullet.png");
+  let SPEEDBULLETIMG = createImage("airplane/speedbullet.png");
+  let STARTSCREEN = createImage("airplane/startscreen.png");
+
+  document.addEventListener("mousemove", mouseMoveHandler, false);
+  document.addEventListener("keyup", keyUpHandler, false);
+  canvas.addEventListener("click",clickHandler, false);
+  canvas.addEventListener("touchstart", touchStartHandler, false);
+  canvas.addEventListener("touchmove", touchMoveHandler, false);
+  canvas.addEventListener("touchend", touchEndHandler, false);
+
+  function mouseMoveHandler(e) {
+    if (gameState !== "start"){
+      let relativeX = e.clientX - canvas.offsetLeft;
+      if(relativeX > 0 && relativeX < canvas.width) {
+        player.x = relativeX - player.width/2;
+      }
+      let relativeY = e.clientY - canvas.offsetTop;
+      if(relativeY > 0 && relativeY < canvas.height) {
+        player.y = relativeY - player.width/2;
+      }
+
+      if (e.clientX < canvas.offsetLeft || e.clientX > canvas.offsetLeft + canvas.width) {
+        gameState = "isPaused";
+      } else {
+        gameState = null;
+      }
+    }
+  }
+
+  function keyUpHandler(e) {
+    if (e.key === " " && gameState !== "gameOver" && gameState !== "start"){
+      if (gameState === "isPaused") {
+        gameState = true;
+      } else {
+        gameState = "isPaused";
+      }
+    }
+  }
+
+  function clickHandler(e) {
+    if (gameState === "gameOver") {
+      gameState = "restart";
+    } else if (gameState === "start") {
+      gameState = "run";
+    }
+  }
+
+  function touchStartHandler(e) {
+    switch (gameState) {
+      case "gameOver":
+        gameState = "restart";
+        break;
+      case "start":
+        gameState = "run";
+        break;
+      default:
+      let t = e.changedTouches[0];
+      let x = t.clientX - canvas.offsetLeft;
+      if (0 < x < canvas.width) {
+        player.x = x - player.width / 2;
+      }
+      let y = t.clientY - canvas.offsetTop;
+      if (0 < y && y < canvas.height) {
+        player.y = y - player.height / 2;
+      }
+
+      if (x < 0 || x > canvas.width || y < 0 || y > canvas.height) {
+        gameState = "isPaused";
+      } else {
+        gameState = "run";
+      }
+    }
+
+    e.preventDefault();
+  }
+
+  function touchMoveHandler(e) {
+    switch (gameState) {
+      case "gameOver":
+        gameState = "restart";
+        break;
+      case "start":
+        gameState = "run";
+        break;
+      default:
+        let t = e.changedTouches[0];
+        let x = t.clientX - canvas.offsetLeft;
+        if (0 < x < canvas.width) {
+          player.x = x - player.width / 2;
+        }
+        let y = t.clientY - canvas.offsetTop;
+        if (0 < y && y < canvas.height) {
+          player.y = y - player.height / 2;
+        }
+
+        if (x < 0 || x > canvas.width || y < 0 || y > canvas.height) {
+          gameState = "isPaused";
+        } else {
+          gameState = "run";
+        }
+    }
+
+    e.preventDefault();
+  }
+
+  function touchEndHandler(e) {
+    switch (gameState) {
+      case "gameOver":
+        gameState = "restart";
+        break;
+      case "start":
+        gameState = "run";
+        break;
+      default:
+        let t = e.changedTouches[0];
+        let x = t.clientX - canvas.offsetLeft;
+        if (0 < x < canvas.width) {
+          player.x = x - player.width / 2;
+        }
+        let y = t.clientY - canvas.offsetTop;
+        if (0 < y && y < canvas.height) {
+          player.y = y - player.height / 2;
+        }
+
+        if (x < 0 || x > canvas.width || y < 0 || y > canvas.height) {
+          gameState = "isPaused";
+        } else {
+          gameState = "run";
+        }
+    }
+
+    e.preventDefault();
+  }
+
+  ctx.draw = {};
+
+  ctx.draw.rect = function(x, y, width, height, color) {
+    ctx.beginPath();
+    ctx.rect(x, y, width, height);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.closePath();
+  };
+
+  ctx.draw.circle = function(x, y, radius, color) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI*2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.closePath();
+  };
+
+  ctx.draw.array = function(array) {
+    let i = 0;
+    let bool = false;
+    while (i < array.length) {
+      if (array[i].draw()) {
+        array.splice(i, 1);
+        bool = true;
+        continue;
+      }
+      i += 1;
+    }
+    if (array.length >= 1273) {
+      array.splice(0, 1);
+    }
+    return bool;
+  };
+
+  ctx.draw.image = function(image, x=0, y=0) {
+    ctx.drawImage(image, x, y);
+  };
+
+  function randInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  class Player {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.num = 1;
+      this.width = 64;
+      this.height = 64;
+      // this.speed = 7;
+      this.health = 10;
+      this.maxhealth = this.health;
+      this.color = "#32ff00";
+      this.img = PLAYERIMG;
+    }
+    hit() {
+      if (this.health > 0) {
+        this.health -= 1;
+      }
+      if (this.health === 0) {
+        gameState = "gameOver";
+        document.removeEventListener("mousemove", mouseMoveHandler, false);
+      }
+    }
+
+    draw() {
+      if (PLAYERIMG !== false) {
+        ctx.draw.image(this.img, this.x, this.y);
+      } else {
+        ctx.draw.rect(this.x, this.y, this.width, this.height, this.color);
+      }
+
+      ctx.font = "20px Menlo";
+      ctx.fillStyle = "#ff1414";
+      ctx.fillText(this.num, this.x + 27, this.y + 43);
+
+      // health bar
+      ctx.draw.rect(this.x - 18, this.y - 25, 10 * this.maxhealth, 10, "#00ff00");
+      ctx.draw.rect(this.x + 82, this.y - 25, -10 * (10 - this.health), 10, "#ff0000");
+
+      if (this.color === "#ee7224") {
+        this.img = BULLETIMG;
+      } else if (this.color === "#0006ff") {
+        this.img = SPEEDIMG;
+      } else {
+        this.img = PLAYERIMG;
+      }
+    }
+  }
+
+  class Bullet {
+    constructor(x, y, radius, xspeed) {
+      this.x = x;
+      this.y = y;
+      this.radius = radius;
+      this.speed = 6;
+      this.xspeed = xspeed;
+    }
+
+    draw() {
+      ctx.draw.circle(this.x, this.y, this.radius, player.color);
+
+      if (this.y < -this.radius || this.x < -this.radius || this.x > canvas.width + this.radius) {
+        return true
+      } else {
+        this.y -= this.speed;
+        this.x += this.xspeed;
+      }
+
+      let active = false;
+      for (let powerup of powerups) {
+        if (powerup.type === 'b' && powerup.active) {
+          active = true;
+        }
+      }
+
+      let i = 0;
+      while (i < bosses.length) {
+        if ((this.y - this.radius < bosses[i].y + bosses[i].height && this.y + this.radius > bosses[i].y) &&
+          (this.x - this.radius < bosses[i].x + bosses[i].width && this.x + this.radius > bosses[i].x)) {
+          if (bosses[i].hit()) {
+            bosses.splice(i, 1);
+          }
+          return !active;
+        }
+        i += 1
+      }
+
+      i = 0;
+      while (i < enemies.length) {
+        if ((this.y - this.radius < enemies[i].y + enemies[i].height && this.y + this.radius > enemies[i].y) &&
+          (this.x - this.radius < enemies[i].x + enemies[i].width && this.x + this.radius > enemies[i].x)) {
+          enemies[i].hit();
+          enemies.splice(i, 1);
+          for (let powerup of powerups) {
+            if (powerup.active) {
+              powerup.endKills += 1;
+            }
+          }
+          return !active;
+        }
+        i += 1
+      }
+    }
+  }
+
+  class Powerup {
+    constructor(x, speed) {
+      this.x = x;
+      this.y = -63;
+      this.speed = speed;
+      this.radius = 32;
+      this.color = '#ffffff';
+      this.endKills = 0;
+      this.active = false;
+    }
+
+    startAction() {
+      this.active = true;
+      //powerup does this when it is initially activated
+    }
+
+    action() {
+      player.color = this.color;
+      //powerup does this
+    }
+
+    endAction() {
+      this.active = false;
+      //powerup does this when it ends
+
+    }
+
+    whenActive() {
+      if (this.endKills < 0) {
+        this.active = true;
+        this.action();
+        return false
+      } else {
+        if (this.active) {
+          this.endAction();
+        }
+        this.active = false;
+        return this.endKills !== 0;
+      }
+    }
+
+    draw() {
+      ctx.draw.circle(this.x, this.y, this.radius, this.color);
+      this.y += this.speed;
+
+      if ((this.y + this.radius > canvas.height +  (2 * this.radius)) && !this.active) {
+        return true
+      }
+
+      if ((player.x < this.x + this.radius && player.y < this.y + this.radius) &&
+        (player.x + player.width > this.x - this.radius && player.y + player.width > this.y - this.radius)) {
+        this.startAction();
+        this.endKills = -25;
+        this.x = -100;
+        this.y = canvas.height;
+        if (this.type != "h") {
+          player.color = this.color;
+        }
+      }
+
+      return this.whenActive()
+    }
+  }
+
+  class HealthPowerup extends Powerup {
+    constructor(x, speed) {
+      super(x, speed);
+      this.color = '#32ff00';
+      this.type = 'h';
+    }
+
+    startAction() {
+      player.health += 1; // gives 2 * this
+      if (player.health > player.maxhealth) {
+        let diff = player.health - player.maxhealth;
+        score += 25 * diff;
+        player.health = player.maxhealth;
+      }
+      this.endKills = 0;
+    }
+  }
+
+  class BulletPowerup extends Powerup {
+    constructor(x, speed) {
+      super(x, speed);
+      this.color = "#ee7224";
+      this.type = 'b';
+    }
+  }
+
+  class SpeedPowerup extends Powerup {
+    constructor(x, speed) {
+      super(x, speed);
+      this.color = '#0006ff';
+      this.type = 's';
+    }
+
+    startAction() {
+      for (let enemy of enemies) {
+        enemy.speed /= 5;
+      }
+      for (let boss of bosses) {
+        boss.xspeed /= 5;
+        boss.yspeed /= 5;
+      }
+    }
+
+    endAction() {
+      for (let enemy of enemies) {
+        enemy.speed *= 5;
+      }
+      for (let boss of bosses) {
+        boss.xspeed *= 5;
+        boss.yspeed *= 5;
+      }
+    }
+
+  }
+
+  class Enemy {
+    constructor(x, speed) {
+      this.x = x;
+      this.y = -31;
+      this.speed = speed * ramp;
+      if (this.speed > speed * 7 && this.speed < canvas.height) {
+        this.speed = speed * 7;
+      }
+      this.width = 32;
+      this.height = 32;
+      this.color = "#ff0000"
+    }
+
+    hit() {
+      score++;
+    }
+
+    draw() {
+      if (ENEMYIMG !== false) {
+        ctx.draw.image(ENEMYIMG, this.x, this.y);
+      } else {
+        ctx.draw.rect(this.x, this.y, this.width, this.height, this.color);
+      }
+
+      this.y += this.speed;
+
+      if (this.y > canvas.height) {
+        return true
+      }
+
+      if ((player.x < this.x + this.width && player.y < this.y + this.height) && (player.x + player.width > this.x &&
+        player.y + player.width > this.y)){
+        this.hit();
+        player.hit();
+        return true
+      }
+    }
+  }
+
+  class BossEnemy {
+    constructor(x, speed) {
+      this.x = x;
+      this.y = 0;
+      this.xspeed = speed * ramp;
+      if (this.xspeed > speed * 7 && this.xspeed < canvas.width) {
+        this.xspeed = 7;
+      }
+      this.yspeed = speed * 0.5 * ramp;
+      if (this.yspeed > speed * 3.5 && this.yspeed < canvas.height) {
+        this.yspeed = 3.5;
+      }
+      this.width = 128;
+      this.height = 128;
+      this.health = 20 * ramp;
+      this.maxhealth = this.health;
+      this.color = "#ffff00";
+    }
+
+    hit() {
+      score += 1;
+      this.health -= 1;
+      return this.health <= 0;
+    }
+
+    draw() {
+      if (BOSSIMG !== false) {
+        ctx.draw.image(BOSSIMG, this.x, this.y);
+      } else {
+        ctx.draw.rect(this.x, this.y, this.width, this.height, this.color);
+      }
+
+      ctx.draw.rect(this.x + 64 - this.maxhealth, this.y - 25, this.maxhealth * 2, 10, "#ff0000");
+      ctx.draw.rect(this.x + 64 - this.maxhealth, this.y - 25, this.health * 2, 10, "#00ff00");
+
+
+      this.x += this.xspeed;
+      this.y += this.yspeed;
+
+      if (this.x + this.xspeed < 0 || this.x + this.xspeed > canvas.width - this.width) {
+        this.xspeed *= -1;
+      }
+
+      if (this.y + this.yspeed < 0 || this.y + this.yspeed > canvas.height - this.width) {
+        this.yspeed *= -1;
+      }
+    }
+  }
+
+  function kill() {
+    while (player.health > 0) {
+      player.hit()
+    }
+  }
+
+  function drawScore() {
+    ctx.font = "20px Menlo";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("Score: "+score, 10, 23);
+  }
+
+  function redrawWindow() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    colorCheck: for (let i=0; i < powerups.length; i++) {
+      if (powerups[i].type === 'b' && powerups[i].active){
+        for (let j=i+1; j<powerups.length; j++) {
+          if (powerups[j].type === 's' && powerups[j].active) {
+            player.img = SPEEDBULLETIMG;
+            break colorCheck;
+          }
+        }
+      }
+    }
+    ctx.draw.array(bosses);
+    ctx.draw.array(enemies);
+    ctx.draw.array(bullets);
+    if (ctx.draw.array(powerups)) {
+      player.color = "#32ff00";
+    }
+    player.draw();
+    drawScore();
+  }
+
+  function mainFunction() {
+    switch (gameState) {
+      case "start":
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (STARTSCREEN !== false) {
+          ctx.draw.image(STARTSCREEN, 10, 180);
+        } else {
+          ctx.font = "50px Menlo";
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText("Airplane Shooter", 10, 200);
+        }
+        break;
+      case "gameOver":
+        document.removeEventListener("mousemove", mouseMoveHandler, true);
+        ctx.font = "60px Menlo";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("Game Over", 90, 300);
+        break;
+      case "isPaused":
+        ctx.font = "60px Menlo";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("Paused", 126, 300);
+        break;
+      case "restart":
+          document.addEventListener("mousemove", mouseMoveHandler, false);
+          score = 0;
+          player.health = player.maxhealth;
+          player.color = "#32ff00";
+          powerups = [];
+          bullets = [];
+          enemies = [];
+          bosses = [];
+          gameState = "run";
+        break;
+      case "partyMode":
+        score = 1000000000000000000000;
+        break;
+      default:
+        if (score / 200 > 1) {
+          ramp = score / 200;
+        } else {
+          ramp = 1;
+        }
+
+        if ((score % 100 === 0 || score === 100) && score !== 0) {
+          let bool = true;
+          for (let powerup of powerups) {
+            if (powerup.type === 's' && powerup.active) {
+              bool = false;
+            }
+          }
+          if (!bool) {
+            bosses.push(new BossEnemy(randInt(0, 352), 1/5));
+          } else {
+            bosses.push(new BossEnemy(randInt(1, 352), 1));
+          }
+        }
+
+        if (score % 50 === 0) {
+          powerupNum = randInt(score + 1, score + 49);
+          score += 1;
+        }
+
+        if (score >= powerupNum && powerupNum !== 0) {
+          let randint = randInt(1, 6);
+          switch (randint) {
+            case 1:
+            case 2:
+              powerups.push(new HealthPowerup(randInt(0, 480), 2));
+              break;
+            case 3:
+            case 4:
+              powerups.push(new BulletPowerup(randInt(0, 480), 2));
+              break;
+            case 5:
+            case 6:
+              powerups.push(new SpeedPowerup(randInt(0, 480), 2));
+              break;
+            default:
+              powerups.push(new Powerup(randInt(0, 480), 2));
+          }
+          powerupNum = 0;
+        }
+
+        if (enemies.length < 10) {
+          let n = 1;
+          for (let powerup of powerups) {
+            if (powerup.type === 's' && powerup.active) {
+              n *= 5;
+            }
+          }
+          enemies.push(new Enemy(randInt(0, 448), 5 / n));
+        }
+
+
+        if (isShot > 0) {
+          isShot += ramp;
+        }
+        if (isShot > 6) {
+          isShot = 0;
+        }
+        if (isShot === 0) {
+          let bool = true;
+          for (let powerup of powerups) {
+            if (powerup.type === 'b' && powerup.active) {
+              bool = false;
+            }
+          }
+          if (bool) {
+            bullets.push(new Bullet(player.x + 32, player.y, 8, 0));
+          } else {
+            bullets.push(new Bullet(player.x, player.y, 32, -3));
+            bullets.push(new Bullet(player.x + 32, player.y, 32, 0));
+            bullets.push(new Bullet(player.x + 64, player.y, 32, 3));
+          }
+          isShot += 1;
+        }
+
+        redrawWindow()
+    }
+    seconds = Math.ceil(frames / 60);
+    frames += 1;
+
+    requestAnimationFrame(mainFunction)
+  }
+
+  let player = new Player(64, 696);
+  let powerups = [];
+  let bullets = [];
+  let enemies = [];
+  let bosses = [];
+
+  // setInterval(mainFunction, 1000/FPS);
+  mainFunction()
+</script>
+</body>
+</html>
